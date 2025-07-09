@@ -1,0 +1,176 @@
+version: '3.8'
+
+services:
+  # Database Services
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: trendcatcher
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - trendcatcher-network
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_DB: timescaledb
+      POSTGRES_USER: timescale
+      POSTGRES_PASSWORD: timescale
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    networks:
+      - trendcatcher-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - trendcatcher-network
+
+  # Airflow Services
+  airflow-webserver:
+    build:
+      context: ./etl
+      dockerfile: ../infrastructure/docker/Dockerfile.airflow
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres/trendcatcher
+      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here-32-characters'
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'your-webserver-secret-key'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    volumes:
+      - ./etl/dags:/opt/airflow/dags
+      - ./etl/scripts:/opt/airflow/scripts
+      - airflow_logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
+    command: webserver
+    networks:
+      - trendcatcher-network
+
+  airflow-scheduler:
+    build:
+      context: ./etl
+      dockerfile: ../infrastructure/docker/Dockerfile.airflow
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres/trendcatcher
+      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here-32-characters'
+    volumes:
+      - ./etl/dags:/opt/airflow/dags
+      - ./etl/scripts:/opt/airflow/scripts
+      - airflow_logs:/opt/airflow/logs
+    command: scheduler
+    networks:
+      - trendcatcher-network
+
+  # ML Training Service
+  ml-training:
+    build:
+      context: ./ml
+      dockerfile: ../infrastructure/docker/Dockerfile.ml
+    depends_on:
+      - postgres
+      - timescaledb
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/trendcatcher
+      TIMESCALE_URL: postgresql://timescale:timescale@timescaledb:5432/timescaledb
+    volumes:
+      - ./ml/models:/app/models
+      - ml_data:/app/data
+    networks:
+      - trendcatcher-network
+
+  # API Service
+  api:
+    build:
+      context: ./api
+      dockerfile: ../infrastructure/docker/Dockerfile.api
+    depends_on:
+      - postgres
+      - timescaledb
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/trendcatcher
+      TIMESCALE_URL: postgresql://timescale:timescale@timescaledb:5432/timescaledb
+      REDIS_URL: redis://redis:6379
+      API_SECRET_KEY: your-api-secret-key
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml/models:/app/models:ro
+    networks:
+      - trendcatcher-network
+
+  # Frontend Service
+  web:
+    build:
+      context: ./web
+      dockerfile: ../infrastructure/docker/Dockerfile.web
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - trendcatcher-network
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - trendcatcher-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana:/etc/grafana/provisioning
+    networks:
+      - trendcatcher-network
+
+networks:
+  trendcatcher-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  timescale_data:
+  redis_data:
+  airflow_logs:
+  ml_data:
+  prometheus_data:
+  grafana_data: 

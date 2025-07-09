@@ -1,0 +1,59 @@
+# Core Airflow
+apache-airflow==2.7.3
+apache-airflow-providers-postgres==5.7.1
+
+# Web Scraping
+playwright==1.40.0
+beautifulsoup4==4.12.2
+requests==2.31.0
+selenium==4.15.2
+
+# Data Processing
+pandas==2.1.4
+numpy==1.25.2
+polars==0.20.2
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+timescaledb==0.1.0
+
+# NLP for skill extraction
+spacy==3.7.2
+spacy-transformers==1.3.4
+
+# Configuration and Utilities
+python-dotenv==1.0.0
+pydantic==2.5.2
+pydantic-settings==2.1.0
+
+# Logging and Monitoring
+structlog==23.2.0
+prometheus-client==0.19.0
+
+# HTTP and API
+httpx==0.25.2
+aiohttp==3.9.1
+
+# Job Board APIs
+linkedin-api==2.2.0
+indeed-api==0.1.0
+
+# Rate limiting and retry
+tenacity==8.2.3
+ratelimit==2.2.1
+
+# Data validation
+cerberus==1.3.4
+marshmallow==3.20.2
+
+# Text processing
+nltk==3.8.1
+textblob==0.17.1
+
+# Development and Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+flake8==6.1.0
+pre-commit==3.6.0 

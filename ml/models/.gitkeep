@@ -1,0 +1,6 @@
+# ML TEAM: Eğitilmiş modellerinizi bu klasöre kaydedin
+# Örnek dosyalar:
+# - salary_predictor_v1.joblib
+# - skill_ner_model/
+# - feature_pipeline.pkl
+# - model_metadata.json 

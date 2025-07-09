@@ -1,0 +1,7 @@
+# FRONTEND TEAM: Next.js sayfalarınızı bu klasöre ekleyin
+# Örnek dosyalar:
+# - index.tsx (Ana sayfa)
+# - trends.tsx (Trend analizi)
+# - salary.tsx (Maaş hesaplama)
+# - _app.tsx (App wrapper)
+# - _document.tsx (HTML document) 

@@ -1,0 +1,7 @@
+# ETL TEAM: Scraping scriptlerinizi bu klasöre ekleyin
+# Örnek dosyalar:
+# - linkedin_scraper.py
+# - indeed_scraper.py
+# - kariyer_scraper.py
+# - data_processor.py
+# - database_utils.py 
