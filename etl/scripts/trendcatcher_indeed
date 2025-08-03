@@ -1,0 +1,82 @@
+import time
+import random
+import pandas as pd
+import html
+from bs4 import BeautifulSoup
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# Ayarlar
+BASE_URL = "https://tr.indeed.com"
+QUERY = "data"
+LOCATION = "Türkiye"
+MAX_PAGES = 5
+OUTPUT_FILE = "indeed_scraped_final.csv"
+
+options = uc.ChromeOptions()
+options.headless = False
+options.add_argument("--disable-blink-features=AutomationControlled")
+driver = uc.Chrome(options=options)
+
+def wait_for_jobs():
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located((By.CLASS_NAME, "job_seen_beacon"))
+        )
+        return True
+    except:
+        return False
+
+def get_card_data(card):
+    try:
+        title = card.select_one("h2.jobTitle").get_text(strip=True)
+    except: title = ""
+
+    try:
+        company = card.select_one("span.companyName").get_text(strip=True)
+    except: company = ""
+
+    try:
+        location = card.select_one("div.companyLocation").get_text(strip=True)
+    except: location = ""
+
+    try:
+        summary = card.select_one("div.job-snippet").get_text(separator=" ", strip=True)
+    except: summary = ""
+
+    try:
+        href = card.find("a", href=True)["href"]
+        link = BASE_URL + href
+    except: link = ""
+
+    return [title, company, location, summary, link]
+
+# Veri çekme
+job_data = []
+for page in range(0, MAX_PAGES * 10, 10):
+    url = f"{BASE_URL}/jobs?q={QUERY}&l={LOCATION}&start={page}"
+    print(f"🔎 Sayfa {page//10 + 1}: {url}")
+    driver.get(url)
+    if not wait_for_jobs():
+        print("⛔ Sayfa yüklenemedi veya bot engeli.")
+        continue
+
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    job_cards = soup.find_all("div", class_="job_seen_beacon")
+    print(f"✅ {len(job_cards)} ilan bulundu.")
+
+    for card in job_cards:
+        job_data.append(get_card_data(card))
+
+    time.sleep(random.uniform(5, 8))
+
+driver.quit()
+
+# Kaydet
+df = pd.DataFrame(job_data, columns=["Title", "Company", "Location", "Summary", "Link"])
+df.drop_duplicates(inplace=True)
+df.to_csv(OUTPUT_FILE, index=False, encoding="utf-8-sig", quoting=1)
+
+print(f"\n✅ Toplam {len(df)} ilan başarıyla kaydedildi: {OUTPUT_FILE}")
